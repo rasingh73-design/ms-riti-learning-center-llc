@@ -1,18 +1,23 @@
 <!DOCTYPE html>
-<html lang="en"><head>
-<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Homework · Sunshine Scholars</title>
-<link rel="stylesheet" href="assets/css/style.css"/>
-<script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
-<script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
-<script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
-<script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-storage-compat.js"></script>
-<script defer src="assets/js/firebase.js"></script>
-<script defer src="assets/js/main.js"></script>
-</head><body>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Homework · Ms. Riti Learning Center</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="assets/css/style.css" />
+
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-storage-compat.js"></script>
+  <script defer src="assets/js/firebase.js"></script>
+  <script defer src="assets/js/main.js"></script>
+  <script defer src="assets/js/hw.js"></script>
+</head>
+<body>
 <header class="backdrop">
   <div class="container nav">
-    <div class="brand"><img src="assets/img/logo.svg" alt="logo"/><span>Sunshine <span style='color:var(--primary)'>Scholars</span></span></div>
+    <div class="brand"><img src="assets/img/logo.svg" alt="logo"/><span>Ms. Riti <span style="color:var(--primary)">Learning Center</span></span></div>
     <nav class="navlinks">
       <a href="index.html">Home</a><a href="homework.html">Homework</a><a href="submit.html">Submit</a>
       <a href="practice.html">Practice</a><a href="stories.html">Stories</a><a href="admin.html">Teacher</a>
@@ -20,26 +25,65 @@
     </nav>
   </div>
 </header>
+
 <div class="container">
-
-<section class="hero">
-  <div class="card">
-    <div class="kicker">Assignments</div>
-    <h1>Homework by Grade & Subject</h1>
-    <div class="mt-2" style="display:flex;gap:.5rem;flex-wrap:wrap">
-      <select id="gradeSel"></select><select id="subjectSel"></select>
-      <button class="btn btn-primary" onclick="HW.renderList('hwList','gradeSel','subjectSel')">Filter</button>
-      <button class="btn btn-ghost" onclick="document.getElementById('gradeSel').value='';document.getElementById('subjectSel').value='';HW.renderList('hwList','gradeSel','subjectSel')">Reset</button>
+  <section class="hero">
+    <div class="card">
+      <div class="kicker">Assignments</div>
+      <h1>Homework by Grade & Subject</h1>
+      <div class="mt-2" style="display:flex;gap:.5rem;flex-wrap:wrap">
+        <select id="gradeSel">
+          <option value="">All Grades</option>
+          <option>PreK</option><option>K</option>
+          <option>1</option><option>2</option><option>3</option>
+          <option>4</option><option>5</option><option>6</option><option>7</option><option>8</option>
+        </select>
+        <select id="subjectSel">
+          <option value="">All Subjects</option>
+          <option>English Language Arts</option><option>Mathematics</option><option>Science</option><option>Social Studies</option>
+          <option>Computer Science & Technology</option><option>Health & Physical Education</option>
+          <option>Fine Arts – Music</option><option>Fine Arts – Visual Arts</option>
+          <option>World Languages (where offered)</option><option>Reading Intervention / ESOL</option>
+        </select>
+        <button class="btn btn-primary" id="filterBtn">Filter</button>
+        <button class="btn btn-ghost" id="resetBtn">Reset</button>
+      </div>
     </div>
-  </div>
-</section>
-<section class="mt-2"><div id="hwList" class="grid"></div></section>
-<script src="assets/js/hw.js" defer></script>
-<script>document.addEventListener("DOMContentLoaded",()=>{SS.mountGrade('gradeSel');SS.mountSubject('subjectSel');HW.renderList('hwList','gradeSel','subjectSel');});</script>
+  </section>
 
+  <section class="mt-2"><div id="hwList" class="grid"></div></section>
 </div>
+
 <footer class="container">
-  <div>© <span id="year"></span> Sunshine Scholars</div>
-  <div class="small">K–8 teacher–student portal. Built to grow with you.</div>
+  <div>© <span id="year"></span> Ms. Riti Learning Center</div>
+  <div class="small">K–8 teacher–student portal.</div>
 </footer>
-</body></html>
+
+<script>
+  async function renderHW(){
+    const g = document.getElementById("gradeSel").value || "";
+    const s = document.getElementById("subjectSel").value || "";
+    let q = db.collection('assignments').orderBy('createdAt','desc').limit(100);
+    const snap = await q.get();
+    let items = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    if(g) items = items.filter(a=>a.grade===g);
+    if(s) items = items.filter(a=>a.subject===s);
+
+    const root = document.getElementById("hwList");
+    root.innerHTML = items.length ? items.map(h => `
+      <div class="row">
+        <div>
+          <div class="subject">${h.title || '(untitled)'}</div>
+          <div class="small">${h.subject || ''} · Grade ${h.grade || ''}</div>
+        </div>
+        ${h.due ? `<div class="small">Due: ${h.due}</div>`:''}
+        ${h.link ? `<a class="btn btn-ghost" href="${h.link}" target="_blank">Open</a>`:''}
+      </div>`).join("")
+      : `<div class="small">No homework yet.</div>`;
+  }
+  document.getElementById("filterBtn").onclick = renderHW;
+  document.getElementById("resetBtn").onclick = () => { document.getElementById("gradeSel").value=""; document.getElementById("subjectSel").value=""; renderHW(); };
+  document.addEventListener("DOMContentLoaded", renderHW);
+</script>
+</body>
+</html>

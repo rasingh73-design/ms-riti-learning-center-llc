@@ -1,18 +1,22 @@
 <!DOCTYPE html>
-<html lang="en"><head>
-<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>Login · Sunshine Scholars</title>
-<link rel="stylesheet" href="assets/css/style.css"/>
-<script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
-<script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
-<script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
-<script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-storage-compat.js"></script>
-<script defer src="assets/js/firebase.js"></script>
-<script defer src="assets/js/main.js"></script>
-</head><body>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Login · Ms. Riti Learning Center</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="stylesheet" href="assets/css/style.css" />
+
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-storage-compat.js"></script>
+  <script defer src="assets/js/firebase.js"></script>
+  <script defer src="assets/js/main.js"></script>
+</head>
+<body>
 <header class="backdrop">
   <div class="container nav">
-    <div class="brand"><img src="assets/img/logo.svg" alt="logo"/><span>Sunshine <span style='color:var(--primary)'>Scholars</span></span></div>
+    <div class="brand"><img src="assets/img/logo.svg" alt="logo"/><span>Ms. Riti <span style="color:var(--primary)">Learning Center</span></span></div>
     <nav class="navlinks">
       <a href="index.html">Home</a><a href="homework.html">Homework</a><a href="submit.html">Submit</a>
       <a href="practice.html">Practice</a><a href="stories.html">Stories</a><a href="admin.html">Teacher</a>
@@ -20,35 +24,61 @@
     </nav>
   </div>
 </header>
-<div class="container">
 
-<section class="hero">
-  <div class="card">
-    <div class="kicker">Account</div>
-    <h1>Login / Sign up</h1>
-    <p class="lead">Use school email or Google. After logging in, you can submit homework and see your results.</p>
-    <div class="mt-2" style="display:grid;gap:.6rem;max-width:420px">
-      <input id="email" type="email" placeholder="Email"/><input id="password" type="password" placeholder="Password"/>
-      <div style="display:flex;gap:.5rem;flex-wrap:wrap">
-        <button class="btn btn-primary" onclick="emailLogin()">Login</button>
-        <button class="btn btn-ghost" onclick="emailSignup()">Create account</button>
-        <button class="btn btn-ghost" onclick="signInWithGoogle()">Sign in with Google</button>
-        <button class="btn btn-ghost" onclick="doLogout()">Logout</button>
+<div class="container">
+  <section class="hero">
+    <div class="card">
+      <div class="kicker">Account</div>
+      <h1>Login / Sign up</h1>
+      <p class="lead">Use school email or Google. After logging in you can submit homework and see results.</p>
+      <div class="mt-2" style="display:grid;gap:.6rem;max-width:420px">
+        <input id="email" type="email" placeholder="Email"/>
+        <input id="password" type="password" placeholder="Password"/>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+          <button class="btn btn-primary" id="loginBtn">Login</button>
+          <button class="btn btn-ghost" id="signupBtn">Create account</button>
+          <button class="btn btn-ghost" id="googleBtn">Sign in with Google</button>
+          <button class="btn btn-ghost" id="logoutBtn">Logout</button>
+        </div>
+        <div class="small">User: <span id="whoami">Signed out</span></div>
       </div>
     </div>
-  </div>
-  <div class="card"><div class="badge">Privacy</div><div class="small">Use student-friendly emails. Admins can restrict sign-ups by domain in Firebase Auth settings.</div></div>
-</section>
-<script>
-async function signInWithGoogle(){const provider=new firebase.auth.GoogleAuthProvider();await auth.signInWithPopup(provider);}
-async function emailSignup(){const email=document.getElementById('email').value.trim();const pass=document.getElementById('password').value.trim();await auth.createUserWithEmailAndPassword(email,pass);}
-async function emailLogin(){const email=document.getElementById('email').value.trim();const pass=document.getElementById('password').value.trim();await auth.signInWithEmailAndPassword(email,pass);}
-async function doLogout(){await auth.signOut();}
-</script>
-
+    <div class="card"><div class="badge">Privacy</div><div class="small">Admins can restrict sign-ups by domain in Firebase Auth settings.</div></div>
+  </section>
 </div>
+
 <footer class="container">
-  <div>© <span id="year"></span> Sunshine Scholars</div>
-  <div class="small">K–8 teacher–student portal. Built to grow with you.</div>
+  <div>© <span id="year"></span> Ms. Riti Learning Center</div>
+  <div class="small">K–8 teacher–student portal.</div>
 </footer>
-</body></html>
+
+<script>
+  async function signInWithGoogle(){
+    const provider = new firebase.auth.GoogleAuthProvider();
+    await auth.signInWithPopup(provider);
+  }
+  async function emailSignup(){
+    const email = document.getElementById('email').value.trim();
+    const pass = document.getElementById('password').value.trim();
+    await auth.createUserWithEmailAndPassword(email, pass);
+  }
+  async function emailLogin(){
+    const email = document.getElementById('email').value.trim();
+    const pass = document.getElementById('password').value.trim();
+    await auth.signInWithEmailAndPassword(email, pass);
+  }
+  async function doLogout(){ await auth.signOut(); }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    document.getElementById("loginBtn").onclick = emailLogin;
+    document.getElementById("signupBtn").onclick = emailSignup;
+    document.getElementById("googleBtn").onclick = signInWithGoogle;
+    document.getElementById("logoutBtn").onclick = doLogout;
+
+    auth.onAuthStateChanged(user => {
+      document.getElementById("whoami").textContent = user ? user.email : "Signed out";
+    });
+  });
+</script>
+</body>
+</html>
