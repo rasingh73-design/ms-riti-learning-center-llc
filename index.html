@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Home · Sunshine Scholars</title>
+<link rel="stylesheet" href="assets/css/style.css"/>
+<script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+<script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+<script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+<script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-storage-compat.js"></script>
+<script defer src="assets/js/firebase.js"></script>
+<script defer src="assets/js/main.js"></script>
+</head><body>
+<header class="backdrop">
+  <div class="container nav">
+    <div class="brand"><img src="assets/img/logo.svg" alt="logo"/><span>Sunshine <span style='color:var(--primary)'>Scholars</span></span></div>
+    <nav class="navlinks">
+      <a href="index.html">Home</a><a href="homework.html">Homework</a><a href="submit.html">Submit</a>
+      <a href="practice.html">Practice</a><a href="stories.html">Stories</a><a href="admin.html">Teacher</a>
+      <a href="login.html" id="loginLink">Login</a>
+    </nav>
+  </div>
+</header>
+<div class="container">
+
+<section class="hero">
+  <div class="card">
+    <div class="kicker">Welcome</div>
+    <h1>Sunshine Scholars — Florida-ready K–8 Portal</h1>
+    <p class="lead">Students can log in, find homework, practice grade-level skills, and submit assignments. Teachers get a simple dashboard.</p>
+    <div class="mt-2"><a class="btn btn-primary" href="login.html">Student Login →</a><a class="btn btn-ghost" href="practice.html">Practice</a></div>
+    <div class="mt-2 notice">To enable login, add your Firebase config in <code>assets/js/firebase.js</code> and deploy to GitHub Pages.</div>
+  </div>
+  <div class="grid">
+    <div class="card"><div class="badge">Subjects Overview</div><div class="pills" id="subjectsPills"></div></div>
+    <div class="card"><div class="badge">Quick Links</div>
+      <div class="pills"><a class="pill" href="homework.html">Homework</a><a class="pill" href="submit.html">Submit</a><a class="pill" href="practice.html">Practice</a><a class="pill" href="stories.html">Stories</a></div>
+    </div>
+  </div>
+</section>
+<script>document.addEventListener("DOMContentLoaded",()=>{const el=document.getElementById('subjectsPills');el.innerHTML=Object.keys(SS.SUBJECTS).map(s=>`<span class='pill'>${s}</span>`).join('');});</script>
+
+</div>
+<footer class="container">
+  <div>© <span id="year"></span> Sunshine Scholars</div>
+  <div class="small">K–8 teacher–student portal. Built to grow with you.</div>
+</footer>
+</body></html>

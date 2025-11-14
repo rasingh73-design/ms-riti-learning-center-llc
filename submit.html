@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Submit · Sunshine Scholars</title>
+<link rel="stylesheet" href="assets/css/style.css"/>
+<script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+<script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+<script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+<script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-storage-compat.js"></script>
+<script defer src="assets/js/firebase.js"></script>
+<script defer src="assets/js/main.js"></script>
+</head><body>
+<header class="backdrop">
+  <div class="container nav">
+    <div class="brand"><img src="assets/img/logo.svg" alt="logo"/><span>Sunshine <span style='color:var(--primary)'>Scholars</span></span></div>
+    <nav class="navlinks">
+      <a href="index.html">Home</a><a href="homework.html">Homework</a><a href="submit.html">Submit</a>
+      <a href="practice.html">Practice</a><a href="stories.html">Stories</a><a href="admin.html">Teacher</a>
+      <a href="login.html" id="loginLink">Login</a>
+    </nav>
+  </div>
+</header>
+<div class="container">
+
+<section class="hero">
+  <div class="card">
+    <div class="kicker">Turn In</div>
+    <h1>Submit Homework</h1>
+    <p class="lead">Upload a file or paste a link. Your submission will be stored with your account.</p>
+    <div class="mt-2" style="display:grid;gap:.6rem;max-width:520px">
+      <input id="title" placeholder="Assignment title"/>
+      <select id="grade"></select><select id="subject"></select>
+      <input id="link" placeholder="Optional: link to Google Doc/Slides"/>
+      <input id="file" type="file"/>
+      <button class="btn btn-primary" onclick="submitNow()">Submit</button>
+      <div class="small">Requires login.</div>
+    </div>
+  </div>
+</section>
+<script src="assets/js/submit.js" defer></script>
+<script>
+document.addEventListener("DOMContentLoaded",()=>{SS.mountGrade('grade',false);SS.mountSubject('subject',false);});
+async function submitNow(){
+  const f=document.getElementById('file').files[0];
+  const meta={title:document.getElementById('title').value.trim(),grade:document.getElementById('grade').value,subject:document.getElementById('subject').value,link:document.getElementById('link').value.trim()};
+  try{ if(f){await SUBMIT.upload({file:f,meta});} else { await db.collection('submissions').add({...meta, uid:auth.currentUser?.uid||null, createdAt: firebase.firestore.FieldValue.serverTimestamp()}); } alert('Submitted!'); }catch(e){ alert(e.message); }
+}
+</script>
+
+</div>
+<footer class="container">
+  <div>© <span id="year"></span> Sunshine Scholars</div>
+  <div class="small">K–8 teacher–student portal. Built to grow with you.</div>
+</footer>
+</body></html>

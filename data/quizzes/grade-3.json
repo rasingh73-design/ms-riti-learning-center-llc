@@ -1,0 +1,35 @@
+{
+  "grade": "3",
+  "questions": [
+    {
+      "prompt": "What is 7 + 6?",
+      "choices": [
+        "11",
+        "12",
+        "13",
+        "14"
+      ],
+      "answer": 2
+    },
+    {
+      "prompt": "Which is a noun?",
+      "choices": [
+        "Run",
+        "Happy",
+        "Dog",
+        "Blue"
+      ],
+      "answer": 2
+    },
+    {
+      "prompt": "Which planet is known as the Red Planet?",
+      "choices": [
+        "Venus",
+        "Mars",
+        "Jupiter",
+        "Mercury"
+      ],
+      "answer": 1
+    }
+  ]
+}
