@@ -69,42 +69,34 @@
 
 <!-- Page wiring (after DOM + scripts loaded) -->
 <script>
-  document.addEventListener("DOMContentLoaded", () => {
+  window.onload = () => {
+    console.log('init:', { firebase: !!window.firebase, auth: !!window.auth, db: !!window.db, AUTH: !!window.AUTH });
+
+    if (!window.AUTH) {
+      alert('AUTH helpers not loaded. Check assets/js/auth-compat.js path and content.');
+      return;
+    }
+
     const emailEl = document.getElementById("email");
     const passEl  = document.getElementById("password");
     const whoEl   = document.getElementById("whoami");
+    const showErr = (e) => { console.error(e); alert((e.code || 'error') + ': ' + (e.message || 'Failed')); };
 
-    const showErr = (e) => {
-      console.error(e);
-      alert((e.code || 'error') + ': ' + (e.message || 'Failed'));
-    };
-
-    document.getElementById("loginBtn").onclick = async () => {
-      try { await AUTH.emailLogin(emailEl.value.trim(), passEl.value.trim()); }
-      catch (e) { showErr(e); }
-    };
-
-    document.getElementById("signupBtn").onclick = async () => {
-      try { await AUTH.emailSignup(emailEl.value.trim(), passEl.value.trim(), { name: "" }); }
-      catch (e) { showErr(e); }
-    };
-
+    document.getElementById("loginBtn").onclick  = async () => { try { await AUTH.emailLogin(emailEl.value.trim(), passEl.value.trim()); } catch(e){ showErr(e); } };
+    document.getElementById("signupBtn").onclick = async () => { try { await AUTH.emailSignup(emailEl.value.trim(), passEl.value.trim(), { name: "" }); } catch(e){ showErr(e); } };
     document.getElementById("googleBtn").onclick = async () => {
       try { await AUTH.googleLogin(); }
       catch (e) {
         if (e?.code === 'auth/popup-blocked' || e?.code === 'auth/cancelled-popup-request') {
-          try { await auth.signInWithRedirect(new firebase.auth.GoogleAuthProvider()); }
-          catch (ee) { showErr(ee); }
+          try { await auth.signInWithRedirect(new firebase.auth.GoogleAuthProvider()); } catch (ee) { showErr(ee); }
           return;
         }
         showErr(e);
       }
     };
-
     document.getElementById("logoutBtn").onclick = () => AUTH.logout().catch(showErr);
-
     AUTH.onUserChanged(u => { whoEl.textContent = u ? u.email : "Signed out"; });
-  });
+  };
 </script>
 </body>
 </html>

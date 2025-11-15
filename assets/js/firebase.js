@@ -23,3 +23,4 @@ firebase.initializeApp(firebaseConfig);
 window.auth = firebase.auth();
 window.db   = firebase.firestore();
 window.storage = firebase.storage();
+console.log('firebase init ok', !!window.auth, !!window.db);
