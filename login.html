@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <title>Login · Ms. Riti Learning Center</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="assets/css/style.css" />
 
   <!-- Firebase compat SDKs (order matters) -->
@@ -12,8 +12,8 @@
   <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
   <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-storage-compat.js"></script>
 
-  <!-- Your compat init (MUST have real config; no imports) -->
-  <script defer src="assets/js/firebase.js?v=4"></script>
+  <!-- Your compat init (NO imports inside this file) -->
+  <script defer src="assets/js/firebase.js?v=5"></script>
 </head>
 <body>
 <header class="backdrop">
@@ -32,7 +32,7 @@
     <div class="card">
       <div class="kicker">Account</div>
       <h1>Login / Sign up</h1>
-      <p class="lead">Use school email or Google. After logging in you can submit homework and see results.</p>
+      <p class="lead">Use school email or Google.</p>
 
       <div class="mt-2" style="display:grid;gap:.6rem;max-width:420px">
         <input id="email" type="email" placeholder="Email"/>
@@ -61,65 +61,102 @@
 </footer>
 
 <script>
-  // where to go after login
+  // ---------- helpers ----------
+  const $  = id => document.getElementById(id);
+  const log = (...a) => console.log('[login]', ...a);
+  const showErr = (e) => {
+    console.error(e);
+    $('msg').textContent = (e?.code || 'error') + ': ' + (e?.message || 'Something went wrong');
+    alert($('msg').textContent);
+  };
+
   function nextTarget() {
-    const qs = new URLSearchParams(location.search).get('next');
+    const qs = new URLSearchParams(location.search).get('next') || '';
     const saved = sessionStorage.getItem('next') || '';
-    return (qs || saved || '').trim();
+    return (qs || saved).trim();
   }
 
-  async function redirectAfterLogin(user) {
-    if (!user) return;
+  async function ensureUserDoc(uid, name) {
+    const ref = db.collection('users').doc(uid);
+    const snap = await ref.get();
+    if (!snap.exists) {
+      await ref.set({
+        role: 'student',
+        name: name || '',
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+      return 'student';
+    }
+    return snap.data().role || 'student';
+  }
 
+  async function handleRedirect(user) {
+    // decide where to go and navigate
     const next = nextTarget();
+    let role = 'student';
+    try { role = await ensureUserDoc(user.uid, user.displayName); } catch(e) { console.warn(e); }
+    sessionStorage.removeItem('next');
+    const dest = next || ((role === 'teacher' || role === 'admin') ? 'admin.html' : 'index.html');
+    location.replace(dest);
+  }
+
+  // ---------- UI actions ----------
+  async function emailLogin() {
+    const email = $('email').value.trim();
+    const pass  = $('password').value.trim();
+    await auth.signInWithEmailAndPassword(email, pass);
+  }
+
+  async function emailSignup() {
+    const email = $('email').value.trim();
+    const pass  = $('password').value.trim();
+    const cred = await auth.createUserWithEmailAndPassword(email, pass);
+    await ensureUserDoc(cred.user.uid, cred.user.displayName);
+  }
+
+  async function googleLogin() {
     try {
-      const ref = db.collection('users').doc(user.uid);
-      const snap = await ref.get();
-
-      // ensure user doc exists
-      if (!snap.exists) {
-        await ref.set({
-          role: 'student',
-          name: user.displayName || '',
-          createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        }, { merge: true });
-      }
-
-      const role = (snap.exists && snap.data().role) || 'student';
-      sessionStorage.removeItem('next');
-
-      const dest = next || ((role === 'teacher' || role === 'admin') ? 'admin.html' : 'index.html');
-      location.replace(dest);
+      const provider = new firebase.auth.GoogleAuthProvider();
+      await auth.signInWithPopup(provider);
     } catch (e) {
-      console.warn('Redirect failed, defaulting to home:', e);
-      location.replace(next || 'index.html');
+      if (e?.code === 'auth/popup-blocked' || e?.code === 'auth/cancelled-popup-request') {
+        await auth.signInWithRedirect(new firebase.auth.GoogleAuthProvider());
+        return;
+      }
+      throw e;
     }
   }
 
-  window.onload = async () => {
-    // show who
-    const who = document.getElementById('whoami');
+  function doLogout() { return auth.signOut(); }
 
-    // handle redirect flow (when popup was blocked)
+  // ---------- bootstrap ----------
+  window.onload = async () => {
+    // footer year
+    const y = $('year'); if (y) y.textContent = new Date().getFullYear();
+
+    log('init', { firebase: !!window.firebase, auth: !!window.auth, db: !!window.db });
+
+    // wire UI
+    $('loginBtn').onclick  = () => emailLogin().catch(showErr);
+    $('signupBtn').onclick = () => emailSignup().catch(showErr);
+    $('googleBtn').onclick = () => googleLogin().catch(showErr);
+    $('logoutBtn').onclick = () => doLogout().catch(showErr);
+
+    // if a redirect sign-in completed, user will be available here and onAuthStateChanged will fire
     try {
       const res = await auth.getRedirectResult();
-      if (res && res.user) return redirectAfterLogin(res.user);
-    } catch (e) {
-      console.warn('getRedirectResult:', e);
-    }
+      if (res && res.user) { log('redirect result'); return handleRedirect(res.user); }
+    } catch (e) { console.warn('getRedirectResult', e); }
 
-    // normal sign-in / state changes
-    auth.onAuthStateChanged(u => {
-      if (who) who.textContent = u ? (u.email || u.uid) : 'Signed out';
-      if (u) redirectAfterLogin(u);
+    // watch auth state
+    auth.onAuthStateChanged((u) => {
+      $('whoami').textContent = u ? (u.email || u.uid) : 'Signed out';
+      if (u) handleRedirect(u);
     });
 
-    // hard fallback in case the event didn’t fire yet
-    setTimeout(() => {
-      if (auth.currentUser) redirectAfterLogin(auth.currentUser);
-    }, 1500);
+    // hard fallback in case events lag
+    setTimeout(() => { if (auth.currentUser) handleRedirect(auth.currentUser); }, 1500);
   };
 </script>
-
 </body>
 </html>
