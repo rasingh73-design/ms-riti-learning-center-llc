@@ -12,18 +12,23 @@
   <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-storage-compat.js"></script>
   <script defer src="assets/js/firebase.js"></script>
   <script defer src="assets/js/main.js"></script>
-  <script>
+<script>
       async function signInWithGoogle(){
         try {
           const provider = new firebase.auth.GoogleAuthProvider();
           await auth.signInWithPopup(provider);
           document.getElementById("whoami").textContent = auth.currentUser?.email || "Signed in";
         } catch (e) {
-          alert((e.code || 'error') + ': ' + (e.message || 'Sign-in failed'));
           console.error('Google sign-in error:', e);
+          if (e?.code === 'auth/popup-blocked' || e?.code === 'auth/cancelled-popup-request') {
+            // Fallback: use redirect flow
+            return auth.signInWithRedirect(new firebase.auth.GoogleAuthProvider());
+          }
+          alert((e.code || 'error') + ': ' + (e.message || 'Sign-in failed'));
         }
       }
 </script>
+
 
 </head>
 <body>
