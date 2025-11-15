@@ -6,13 +6,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="stylesheet" href="assets/css/style.css" />
 
+  <!-- Firebase compat SDKs (order matters) -->
   <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
   <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
   <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
   <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-storage-compat.js"></script>
-  <script defer src="assets/js/firebase.js"></script>
-  <script defer src="assets/js/submit.js"></script>
-  <script defer src="assets/js/main.js"></script>
+
+  <!-- Your compat init: MUST contain real config; no imports -->
+  <script defer src="assets/js/firebase.js?v=3"></script>
+
+  <!-- If these contain imports, keep them commented out -->
+  <!-- <script defer src="assets/js/submit.js"></script> -->
+  <!-- <script defer src="assets/js/main.js"></script> -->
 </head>
 <body>
 <header class="backdrop">
@@ -32,6 +37,7 @@
       <div class="kicker">Turn In</div>
       <h1>Submit Homework</h1>
       <p class="lead">Upload a file or paste a link (login required).</p>
+
       <div class="mt-2" style="display:grid;gap:.6rem;max-width:520px">
         <input id="title" placeholder="Assignment title" />
         <select id="grade">
@@ -47,7 +53,8 @@
         <input id="link" placeholder="Optional: link to Google Doc/Slides" />
         <input id="file" type="file" />
         <button class="btn btn-primary" id="submitBtn">Submit</button>
-        <div class="small">Make sure you’re logged in.</div>
+        <div class="small">Signed in as: <span id="whoami">Signed out</span></div>
+        <div class="small" id="statusMsg"></div>
       </div>
     </div>
   </section>
@@ -59,30 +66,84 @@
 </footer>
 
 <script>
+  // Simple helpers
+  const showErr = (e) => { console.error(e); alert((e.code || 'error') + ': ' + (e.message || 'Failed')); };
+
   async function doSubmit() {
-    const f = document.getElementById('file').files[0];
-    const meta = {
-      title: document.getElementById('title').value.trim(),
-      grade: document.getElementById('grade').value,
-      subject: document.getElementById('subject').value,
-      link: document.getElementById('link').value.trim()
-    };
     try {
-      if (!auth.currentUser) { alert('Please login first.'); return; }
-      if (f) {
-        const path = `submissions/${auth.currentUser.uid}/${Date.now()}_${f.name}`;
-        const ref = storage.ref().child(path);
-        await ref.put(f);
-        const url = await ref.getDownloadURL();
-        await db.collection('submissions').add({ uid: auth.currentUser.uid, url, ...meta, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
-      } else {
-        await db.collection('submissions').add({ uid: auth.currentUser.uid, ...meta, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
+      const user = auth.currentUser;
+      if (!user) { alert('Please login first.'); return; }
+
+      const title  = document.getElementById('title').value.trim();
+      const grade  = document.getElementById('grade').value;
+      const subject= document.getElementById('subject').value;
+      const link   = document.getElementById('link').value.trim();
+      const fileEl = document.getElementById('file');
+      const file   = fileEl.files[0] || null;
+      const status = document.getElementById('statusMsg');
+
+      if (!title) { alert('Please enter an assignment title.'); return; }
+
+      status.textContent = 'Submitting…';
+
+      let url = null;
+      let storagePath = null;
+
+      if (file) {
+        // Basic client-side size guard (e.g., 20 MB)
+        const MAX_MB = 20;
+        if (file.size > MAX_MB * 1024 * 1024) {
+          alert(`File too large. Max ${MAX_MB} MB.`);
+          return;
+        }
+
+        storagePath = `submissions/${user.uid}/${Date.now()}_${file.name}`;
+        const ref = storage.ref().child(storagePath);
+        // Upload with metadata
+        await ref.put(file, { contentType: file.type || 'application/octet-stream' });
+        url = await ref.getDownloadURL();
       }
+
+      // Write Firestore record
+      await db.collection('submissions').add({
+        uid: user.uid,
+        email: user.email || null,
+        title, grade, subject,
+        link: link || null,
+        url: url || null,
+        storagePath: storagePath || null,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+
+      status.textContent = 'Submitted!';
       alert('Submitted!');
-      document.getElementById('file').value = '';
-    } catch (e) { alert(e.message); }
+      // Reset fields
+      fileEl.value = '';
+      // (Optionally) clear title/link:
+      // document.getElementById('title').value = '';
+      // document.getElementById('link').value = '';
+    } catch (e) {
+      showErr(e);
+      const status = document.getElementById('statusMsg');
+      status.textContent = 'Submission failed.';
+    }
   }
-  document.getElementById('submitBtn').onclick = doSubmit;
+
+  // Wire after all defer scripts
+  window.onload = () => {
+    // footer year
+    const y = document.getElementById('year'); if (y) y.textContent = new Date().getFullYear();
+
+    // whoami
+    auth.onAuthStateChanged(u => {
+      document.getElementById('whoami').textContent = u ? (u.email || u.uid) : 'Signed out';
+    });
+
+    // sanity log
+    console.log('submit init:', { firebase: !!window.firebase, auth: !!window.auth, db: !!window.db, storage: !!window.storage });
+
+    document.getElementById('submitBtn').onclick = () => doSubmit();
+  };
 </script>
 </body>
 </html>

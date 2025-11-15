@@ -6,22 +6,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="stylesheet" href="assets/css/style.css" />
 
-  <!-- Firebase compat SDKs -->
-<script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
-<script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
-<script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
-<script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-storage-compat.js"></script>
-<script defer src="assets/js/firebase.js"></script>
-<script defer src="assets/js/auth-compat.js"></script>
-<!-- TEMP: comment out main.js to avoid stray imports while debugging -->
-<!-- <script defer src="assets/js/main.js"></script> -->
+  <!-- Firebase compat SDKs (order matters) -->
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+  <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-storage-compat.js"></script>
 
+  <!-- Your compat init (NO imports inside this file) -->
+  <script defer src="assets/js/firebase.js?v=3"></script>
 
-  <!-- Your Firebase init (must contain your real config!) -->
-  <script defer src="assets/js/firebase.js"></script>
-  <!-- Auth helpers using compat -->
-  <script defer src="assets/js/auth-compat.js"></script>
-  <script defer src="assets/js/main.js"></script>
+  <!-- Your compat helpers (defines window.AUTH) -->
+  <script defer src="assets/js/auth-compat.js?v=3"></script>
+
+  <!-- (Optional) your own page JS; avoid ES module imports here -->
+  <!-- <script defer src="assets/js/main.js"></script> -->
 </head>
 <body>
 <header class="backdrop">

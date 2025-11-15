@@ -6,13 +6,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="stylesheet" href="assets/css/style.css" />
 
-  <!-- Firebase (compat CDN) + app scripts -->
+  <!-- Firebase compat SDKs (order matters) -->
   <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
   <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
   <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
   <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-storage-compat.js"></script>
-  <script defer src="assets/js/firebase.js"></script>
-  <script defer src="assets/js/main.js"></script>
+
+  <!-- Your compat init: MUST contain real config; no imports -->
+  <script defer src="assets/js/firebase.js?v=3"></script>
+
+  <!-- Optional: only include if this file has NO ES module imports -->
+  <!-- <script defer src="assets/js/main.js?v=3"></script> -->
 </head>
 <body>
 <header class="backdrop">
@@ -48,8 +52,12 @@
         GitHub Pages domain is added in Firebase Auth → Authorized domains.
       </div>
     </div>
+
     <div class="grid">
-      <div class="card"><div class="badge">Subjects Overview</div><div class="pills" id="subjectsPills"></div></div>
+      <div class="card">
+        <div class="badge">Subjects Overview</div>
+        <div class="pills" id="subjectsPills"></div>
+      </div>
       <div class="card">
         <div class="badge">Quick Links</div>
         <div class="pills">
@@ -69,10 +77,16 @@
 </footer>
 
 <script>
+  // Safe helpers that don't depend on other files
   document.addEventListener("DOMContentLoaded", () => {
+    // year
+    const y = document.getElementById('year');
+    if (y) y.textContent = new Date().getFullYear();
+
+    // subjects (only if SS is defined elsewhere)
     const el = document.getElementById('subjectsPills');
-    if (el && window.SS) {
-      el.innerHTML = Object.keys(SS.SUBJECTS).map(s => `<span class='pill'>${s}</span>`).join('');
+    if (el && window.SS && SS.SUBJECTS) {
+      el.innerHTML = Object.keys(SS.SUBJECTS).map(s => `<span class="pill">${s}</span>`).join('');
     }
   });
 </script>

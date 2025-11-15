@@ -6,13 +6,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="stylesheet" href="assets/css/style.css" />
 
+  <!-- Firebase compat SDKs (order matters) -->
   <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
   <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
   <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
   <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-storage-compat.js"></script>
-  <script defer src="assets/js/firebase.js"></script>
-  <script defer src="assets/js/main.js"></script>
-  <script defer src="assets/js/hw.js"></script>
+
+  <!-- Your compat init: must contain REAL config; no imports -->
+  <script defer src="assets/js/firebase.js?v=3"></script>
+
+  <!-- If these files contain any `import ...` statements, keep them commented out -->
+  <!-- <script defer src="assets/js/main.js"></script> -->
+  <!-- <script defer src="assets/js/hw.js"></script> -->
 </head>
 <body>
 <header class="backdrop">
@@ -51,7 +56,9 @@
     </div>
   </section>
 
-  <section class="mt-2"><div id="hwList" class="grid"></div></section>
+  <section class="mt-2">
+    <div id="hwList" class="grid"></div>
+  </section>
 </div>
 
 <footer class="container">
@@ -60,30 +67,58 @@
 </footer>
 
 <script>
+  // Render assignments with optional grade/subject filtering
   async function renderHW(){
-    const g = document.getElementById("gradeSel").value || "";
-    const s = document.getElementById("subjectSel").value || "";
-    let q = db.collection('assignments').orderBy('createdAt','desc').limit(100);
-    const snap = await q.get();
-    let items = snap.docs.map(d=>({id:d.id, ...d.data()}));
-    if(g) items = items.filter(a=>a.grade===g);
-    if(s) items = items.filter(a=>a.subject===s);
+    try {
+      const g = document.getElementById("gradeSel").value || "";
+      const s = document.getElementById("subjectSel").value || "";
 
-    const root = document.getElementById("hwList");
-    root.innerHTML = items.length ? items.map(h => `
-      <div class="row">
-        <div>
-          <div class="subject">${h.title || '(untitled)'}</div>
-          <div class="small">${h.subject || ''} · Grade ${h.grade || ''}</div>
-        </div>
-        ${h.due ? `<div class="small">Due: ${h.due}</div>`:''}
-        ${h.link ? `<a class="btn btn-ghost" href="${h.link}" target="_blank">Open</a>`:''}
-      </div>`).join("")
-      : `<div class="small">No homework yet.</div>`;
+      // Base query: newest first (ensure you have a 'createdAt' field)
+      let q = db.collection('assignments').orderBy('createdAt','desc').limit(100);
+      const snap = await q.get();
+
+      let items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      if (g) items = items.filter(a => a.grade === g);
+      if (s) items = items.filter(a => a.subject === s);
+
+      const root = document.getElementById("hwList");
+      root.innerHTML = items.length
+        ? items.map(h => `
+          <div class="row">
+            <div>
+              <div class="subject">${h.title || '(untitled)'}</div>
+              <div class="small">${h.subject || ''} · Grade ${h.grade || ''}</div>
+              ${h.due ? `<div class="small">Due: ${h.due}</div>` : ''}
+            </div>
+            ${h.link ? `<a class="btn btn-ghost" href="${h.link}" target="_blank" rel="noopener">Open</a>` : ''}
+          </div>
+        `).join("")
+        : `<div class="small">No homework yet.</div>`;
+    } catch (e) {
+      console.error(e);
+      alert((e.code || 'error') + ': ' + (e.message || 'Failed to load homework'));
+    }
   }
-  document.getElementById("filterBtn").onclick = renderHW;
-  document.getElementById("resetBtn").onclick = () => { document.getElementById("gradeSel").value=""; document.getElementById("subjectSel").value=""; renderHW(); };
-  document.addEventListener("DOMContentLoaded", renderHW);
+
+  // Wire up after all deferred scripts are executed
+  window.onload = () => {
+    // footer year
+    const y = document.getElementById('year'); if (y) y.textContent = new Date().getFullYear();
+
+    // sanity check
+    console.log('homework init:', { firebase: !!window.firebase, auth: !!window.auth, db: !!window.db });
+
+    // buttons
+    document.getElementById("filterBtn").onclick = renderHW;
+    document.getElementById("resetBtn").onclick = () => {
+      document.getElementById("gradeSel").value = "";
+      document.getElementById("subjectSel").value = "";
+      renderHW();
+    };
+
+    // initial load
+    renderHW();
+  };
 </script>
 </body>
 </html>

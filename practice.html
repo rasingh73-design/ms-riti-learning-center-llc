@@ -6,13 +6,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="stylesheet" href="assets/css/style.css" />
 
+  <!-- Firebase compat SDKs (order matters) -->
   <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
   <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
   <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
   <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-storage-compat.js"></script>
-  <script defer src="assets/js/firebase.js"></script>
-  <script defer src="assets/js/practice.js"></script>
-  <script defer src="assets/js/main.js"></script>
+
+  <!-- Your compat init: MUST contain real config; no imports -->
+  <script defer src="assets/js/firebase.js?v=3"></script>
+
+  <!-- If these contain `import ...`, keep them commented out for now -->
+  <!-- <script defer src="assets/js/practice.js"></script> -->
+  <!-- <script defer src="assets/js/main.js"></script> -->
 </head>
 <body>
 <header class="backdrop">
@@ -37,8 +42,9 @@
           <option>3</option>
         </select>
         <button class="btn btn-primary" id="loadBtn">Load</button>
-        <a class="btn btn-ghost" href="#" onclick="alert('Add IXL links per grade via assignments.');return false;">IXL Skills</a>
+        <a class="btn btn-ghost" href="#" onclick="alert('Add IXL links per grade via assignments or a dedicated page later.');return false;">IXL Skills</a>
       </div>
+      <div class="small" id="whoami">Signed out</div>
     </div>
   </section>
 
@@ -50,9 +56,118 @@
   <div class="small">K–8 teacher–student portal.</div>
 </footer>
 
+<!-- Inline PRACTICE helper (compat, no imports) -->
 <script>
-  document.getElementById('loadBtn').onclick = () => {
-    PRACTICE.renderQuiz('quizArea', document.getElementById('gradeSelectPractice').value);
+  // Very small quiz engine for demo purposes
+  window.PRACTICE = {
+    makeQuestions(grade) {
+      if (grade === '3') {
+        // 5 simple math multiple-choice qs
+        const qs = [
+          { q: "7 + 5 = ?", choices: ["10","11","12","13"], a: 2 },
+          { q: "9 − 4 = ?", choices: ["3","5","6","7"], a: 1 },
+          { q: "3 × 4 = ?", choices: ["7","10","12","14"], a: 2 },
+          { q: "18 ÷ 3 = ?", choices: ["5","6","7","8"], a: 1 },
+          { q: "Which is greater?", choices: ["0.5","1/4","0.2","1/10"], a: 0 }
+        ];
+        return qs;
+      }
+      return [];
+    },
+
+    renderQuiz(targetId, grade) {
+      const el = document.getElementById(targetId);
+      if (!grade) {
+        el.innerHTML = "<div class='small'>Please choose a grade, then click Load.</div>";
+        return;
+      }
+      const qs = this.makeQuestions(grade);
+      if (!qs.length) {
+        el.innerHTML = "<div class='small'>No practice set for this grade yet.</div>";
+        return;
+      }
+
+      const html = qs.map((item, idx) => {
+        const name = `q_${idx}`;
+        const opts = item.choices.map((c, i) =>
+          `<label class="pill" style="display:inline-flex;align-items:center;gap:.4rem;margin:.25rem 0">
+             <input type="radio" name="${name}" value="${i}"/> ${c}
+           </label>`
+        ).join("<br/>");
+        return `
+          <div class="card" style="margin-bottom:.75rem">
+            <div class="subject">Q${idx+1}. ${item.q}</div>
+            <div class="mt-1">${opts}</div>
+          </div>
+        `;
+      }).join("");
+
+      el.innerHTML = `
+        <div class="card">
+          <div class="badge">Grade ${grade} • Practice</div>
+          ${html}
+          <button class="btn btn-primary" id="submitQuizBtn">Submit Answers</button>
+          <div class="mt-1 small" id="quizMsg"></div>
+        </div>
+      `;
+
+      document.getElementById("submitQuizBtn").onclick = async () => {
+        const answers = [];
+        qs.forEach((_, i) => {
+          const checked = document.querySelector(`input[name="q_${i}"]:checked`);
+          answers.push(checked ? Number(checked.value) : -1);
+        });
+        const correct = qs.reduce((acc, q, i) => acc + (answers[i] === q.a ? 1 : 0), 0);
+        const scorePct = Math.round((correct / qs.length) * 100);
+        const msg = document.getElementById("quizMsg");
+        msg.textContent = `You scored ${correct}/${qs.length} (${scorePct}%).`;
+
+        // Save result if signed in
+        try {
+          if (window.auth && auth.currentUser) {
+            await db.collection('practiceResults').add({
+              uid: auth.currentUser.uid,
+              email: auth.currentUser.email || null,
+              grade: grade,
+              score: scorePct,
+              total: qs.length,
+              correct: correct,
+              createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            msg.textContent += " Result saved!";
+          } else {
+            msg.textContent += " (Sign in to save your result.)";
+          }
+        } catch (e) {
+          console.error(e);
+          msg.textContent += " Could not save result.";
+        }
+      };
+    }
+  };
+
+  // Wire page AFTER all deferred scripts have executed
+  window.onload = () => {
+    // footer year
+    const y = document.getElementById('year'); if (y) y.textContent = new Date().getFullYear();
+
+    // show who is signed in
+    if (window.auth) {
+      auth.onAuthStateChanged(u => {
+        document.getElementById('whoami').textContent = u ? (u.email || u.uid) : 'Signed out';
+      });
+    }
+
+    // sanity check
+    console.log('practice init:', { firebase: !!window.firebase, auth: !!window.auth, db: !!window.db });
+
+    // button wiring
+    const loadBtn = document.getElementById('loadBtn');
+    const gradeSel = document.getElementById('gradeSelectPractice');
+    loadBtn.onclick = () => window.PRACTICE.renderQuiz('quizArea', gradeSel.value);
+
+    // optional: auto-load grade 3
+    // window.PRACTICE.renderQuiz('quizArea', '3');
   };
 </script>
 </body>

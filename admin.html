@@ -6,13 +6,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="stylesheet" href="assets/css/style.css" />
 
+  <!-- Firebase compat SDKs (order matters) -->
   <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
   <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
   <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
   <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-storage-compat.js"></script>
-  <script defer src="assets/js/firebase.js"></script>
-  <script defer src="assets/js/hw.js"></script>
-  <script defer src="assets/js/main.js"></script>
+
+  <!-- Your compat init (NO imports inside this file) -->
+  <script defer src="assets/js/firebase.js?v=3"></script>
+
+  <!-- Optional helpers: only include if they don't use ES module imports -->
+  <!-- <script defer src="assets/js/hw.js"></script> -->
+  <!-- <script defer src="assets/js/main.js"></script> -->
 </head>
 <body>
 <header class="backdrop">
@@ -32,11 +37,13 @@
       <div class="kicker">Teacher</div>
       <h1>Dashboard</h1>
       <p class="lead">Create assignments and review recent submissions.</p>
-      <div class="notice">Ensure your user doc has <code>{ role: "teacher" }</code> in Firestore.</div>
+      <div class="notice">Ensure your user doc has <code>{ role: "teacher" }</code> (or <code>"admin"</code>) in Firestore.</div>
+      <div class="small">Signed in as: <span id="whoami">Checking…</span></div>
+      <div class="small" id="roleMsg"></div>
     </div>
   </section>
 
-  <section class="grid">
+  <section class="grid" id="adminArea" style="display:none">
     <div class="card">
       <div class="badge">New Assignment</div>
       <div class="mt-2" style="display:grid;gap:.6rem;max-width:520px">
@@ -70,38 +77,91 @@
 </footer>
 
 <script>
-  async function addAssignment(){
-    try{
-      const data = {
-        title: document.getElementById('aTitle').value.trim(),
-        grade: document.getElementById('aGrade').value,
-        subject: document.getElementById('aSubject').value,
-        due: document.getElementById('aDue').value.trim(),
-        link: document.getElementById('aLink').value.trim()
-      };
-      await db.collection('assignments').add({ ...data, createdAt: firebase.firestore.FieldValue.serverTimestamp() });
-      alert('Assignment added');
-    }catch(e){ alert(e.message); }
-  }
+  // Runs after all defer scripts executed
+  window.onload = async () => {
+    // Basic page chrome
+    const y = document.getElementById('year'); if (y) y.textContent = new Date().getFullYear();
 
-  async function loadSubs(){
-    const snap = await db.collection('submissions').orderBy('createdAt','desc').limit(50).get();
-    const el = document.getElementById('submissionsList');
-    el.innerHTML = snap.docs.map(d => {
-      const s = d.data();
-      return `<div class="row">
-        <div>
-          <div class="subject">${s.title || '(untitled)'}</div>
-          <div class="small">Grade ${s.grade || ''} · ${s.subject || ''}</div>
-        </div>
-        ${s.url ? `<a class="btn btn-ghost" href="${s.url}" target="_blank">File</a>` : ''}
-        ${s.link ? `<a class="btn btn-ghost" href="${s.link}" target="_blank">Link</a>` : ''}
-      </div>`;
-    }).join('');
-  }
+    // Sanity log
+    console.log('init admin:', { firebase: !!window.firebase, auth: !!window.auth, db: !!window.db });
 
-  document.getElementById('addAssignmentBtn').onclick = addAssignment;
-  document.addEventListener("DOMContentLoaded", loadSubs);
+    const whoEl = document.getElementById('whoami');
+    const roleMsg = document.getElementById('roleMsg');
+    const adminArea = document.getElementById('adminArea');
+
+    const showErr = (e) => { console.error(e); alert((e.code || 'error') + ': ' + (e.message || 'Failed')); };
+
+    // Guard: require signed-in user
+    auth.onAuthStateChanged(async (user) => {
+      whoEl.textContent = user ? (user.email || user.uid) : 'Signed out';
+
+      if (!user) {
+        roleMsg.textContent = 'Please login first.';
+        // Optionally redirect after a short delay:
+        // setTimeout(() => location.href = 'login.html', 800);
+        return;
+      }
+
+      try {
+        // Read role from Firestore: users/{uid}
+        const ref = db.collection('users').doc(user.uid);
+        const snap = await ref.get();
+        const role = snap.exists ? snap.data().role : 'student';
+        roleMsg.textContent = `Role: ${role}`;
+
+        if (role === 'teacher' || role === 'admin') {
+          adminArea.style.display = '';
+          // Wire buttons now
+          document.getElementById('addAssignmentBtn').onclick = addAssignment;
+          // Load submissions
+          loadSubs();
+        } else {
+          adminArea.style.display = 'none';
+          alert('This page is for teachers/admins only. Ask an admin to set your role.');
+        }
+      } catch (e) {
+        showErr(e);
+      }
+    });
+
+    async function addAssignment(){
+      try{
+        const data = {
+          title: document.getElementById('aTitle').value.trim(),
+          grade: document.getElementById('aGrade').value,
+          subject: document.getElementById('aSubject').value,
+          due: document.getElementById('aDue').value.trim(),
+          link: document.getElementById('aLink').value.trim()
+        };
+        if (!data.title) { alert('Please enter a title.'); return; }
+        await db.collection('assignments').add({
+          ...data,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        alert('Assignment added');
+        document.getElementById('aTitle').value = '';
+        document.getElementById('aLink').value = '';
+      } catch(e) { showErr(e); }
+    }
+
+    async function loadSubs(){
+      try{
+        const snap = await db.collection('submissions').orderBy('createdAt','desc').limit(50).get();
+        const el = document.getElementById('submissionsList');
+        el.innerHTML = snap.docs.map(d => {
+          const s = d.data();
+          return `<div class="row">
+            <div>
+              <div class="subject">${s.title || '(untitled)'}</div>
+              <div class="small">Grade ${s.grade || ''} · ${s.subject || ''}</div>
+            </div>
+            ${s.url ? `<a class="btn btn-ghost" href="${s.url}" target="_blank" rel="noopener">File</a>` : ''}
+            ${s.link ? `<a class="btn btn-ghost" href="${s.link}" target="_blank" rel="noopener">Link</a>` : ''}
+          </div>`;
+        }).join('');
+      } catch(e) { showErr(e); }
+    }
+  };
 </script>
 </body>
 </html>

@@ -6,12 +6,17 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="stylesheet" href="assets/css/style.css" />
 
+  <!-- Firebase compat SDKs (order matters) -->
   <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
   <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
   <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
   <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-storage-compat.js"></script>
-  <script defer src="assets/js/firebase.js"></script>
-  <script defer src="assets/js/main.js"></script>
+
+  <!-- Your compat init: MUST contain real config; no imports -->
+  <script defer src="assets/js/firebase.js?v=3"></script>
+
+  <!-- If main.js contains imports, keep it commented out -->
+  <!-- <script defer src="assets/js/main.js"></script> -->
 </head>
 <body>
 <header class="backdrop">
@@ -30,8 +35,53 @@
     <div class="card">
       <div class="kicker">Literacy Corner</div>
       <h1>Stories & Poems (PreK–8)</h1>
-      <p class="small">Post weekly stories, poems, or read-alouds. For copyrighted works, use private links or open-licensed content.</p>
-      <div class="notice">You can store links to stories in Firestore or keep them as static content on this page.</div>
+      <p class="small">Post weekly stories, poems, or read-alouds. Use open-licensed texts or your own writing; for copyrighted works, link privately.</p>
+
+      <div class="mt-2" style="display:flex;gap:.5rem;flex-wrap:wrap">
+        <select id="gradeFilter">
+          <option value="">All Grades</option>
+          <option>PreK</option><option>K</option>
+          <option>1</option><option>2</option><option>3</option>
+          <option>4</option><option>5</option><option>6</option><option>7</option><option>8</option>
+        </select>
+        <input id="tagFilter" placeholder="Filter by tag (e.g., poetry, fable)"/>
+        <button class="btn btn-primary" id="applyFilter">Filter</button>
+        <button class="btn btn-ghost" id="resetFilter">Reset</button>
+      </div>
+
+      <div class="small" id="whoami">Signed out</div>
+      <div class="notice">You can store story links in Firestore collection <code>stories</code> with fields: <code>title, grade, tags[], link, excerpt, createdAt</code>.</div>
+    </div>
+  </section>
+
+  <!-- Teacher/Admin quick add -->
+  <section class="mt-2" id="editorSection" style="display:none">
+    <div class="card">
+      <div class="badge">Add Story / Poem (Teachers)</div>
+      <div class="mt-2" style="display:grid;gap:.6rem;max-width:720px">
+        <input id="sTitle" placeholder="Title (e.g., The Kind Fox)"/>
+        <div style="display:flex;gap:.5rem;flex-wrap:wrap">
+          <select id="sGrade">
+            <option value="">Grade band</option>
+            <option>PreK</option><option>K</option>
+            <option>1</option><option>2</option><option>3</option>
+            <option>4</option><option>5</option><option>6</option><option>7</option><option>8</option>
+          </select>
+          <input id="sTags" placeholder="Tags (comma-separated, e.g., poetry, rhyme)"/>
+        </div>
+        <input id="sLink" placeholder="Link (YouTube read-aloud, PDF, or page URL)"/>
+        <textarea id="sExcerpt" rows="3" placeholder="Short excerpt or summary (optional)"></textarea>
+        <button class="btn btn-primary" id="addStoryBtn">Add Story</button>
+      </div>
+      <div class="small">Only visible to teacher/admin. Students see the list below.</div>
+    </div>
+  </section>
+
+  <!-- List -->
+  <section class="mt-2">
+    <div class="card">
+      <div class="badge">Stories</div>
+      <div id="storiesList" class="grid"></div>
     </div>
   </section>
 </div>
@@ -40,5 +90,122 @@
   <div>© <span id="year"></span> Ms. Riti Learning Center</div>
   <div class="small">K–8 teacher–student portal.</div>
 </footer>
+
+<script>
+  // Render stories list with optional filters
+  async function renderStories() {
+    try {
+      const grade = document.getElementById('gradeFilter').value || '';
+      const tagQ = (document.getElementById('tagFilter').value || '').trim().toLowerCase();
+
+      const snap = await db.collection('stories')
+        .orderBy('createdAt','desc')
+        .limit(200)
+        .get();
+
+      let items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+      if (grade) items = items.filter(s => (s.grade || '') === grade);
+      if (tagQ) {
+        items = items.filter(s => {
+          const tags = (s.tags || []).map(t => String(t).toLowerCase());
+          return tags.some(t => t.includes(tagQ));
+        });
+      }
+
+      const root = document.getElementById('storiesList');
+      root.innerHTML = items.length
+        ? items.map(s => `
+          <div class="row">
+            <div>
+              <div class="subject">${s.title || '(untitled)'}</div>
+              <div class="small">${s.grade ? 'Grade ' + s.grade + ' · ' : ''}${(s.tags || []).join(', ')}</div>
+              ${s.excerpt ? `<div class="small" style="margin-top:.25rem">${s.excerpt}</div>` : ''}
+            </div>
+            ${s.link ? `<a class="btn btn-ghost" href="${s.link}" target="_blank" rel="noopener">Open</a>` : ''}
+          </div>
+        `).join('')
+        : `<div class="small">No stories yet.</div>`;
+    } catch (e) {
+      console.error(e);
+      alert((e.code || 'error') + ': ' + (e.message || 'Failed to load stories'));
+    }
+  }
+
+  async function addStory() {
+    try {
+      const title = document.getElementById('sTitle').value.trim();
+      const grade = document.getElementById('sGrade').value;
+      const link  = document.getElementById('sLink').value.trim();
+      const tags  = (document.getElementById('sTags').value || '').split(',')
+                    .map(t => t.trim()).filter(Boolean);
+      const excerpt = document.getElementById('sExcerpt').value.trim();
+
+      if (!title) { alert('Please enter a title.'); return; }
+
+      await db.collection('stories').add({
+        title, grade: grade || null, link: link || null, tags,
+        excerpt: excerpt || null,
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        authorUid: auth.currentUser ? auth.currentUser.uid : null
+      });
+
+      alert('Story added!');
+      document.getElementById('sTitle').value = '';
+      document.getElementById('sLink').value = '';
+      document.getElementById('sTags').value = '';
+      document.getElementById('sExcerpt').value = '';
+      document.getElementById('sGrade').value = '';
+
+      renderStories();
+    } catch (e) {
+      console.error(e);
+      alert((e.code || 'error') + ': ' + (e.message || 'Could not add story'));
+    }
+  }
+
+  // Wait for all defer scripts
+  window.onload = () => {
+    // footer year
+    const y = document.getElementById('year'); if (y) y.textContent = new Date().getFullYear();
+
+    // whoami
+    const who = document.getElementById('whoami');
+
+    // role-gated editor
+    const editor = document.getElementById('editorSection');
+
+    console.log('stories init:', { firebase: !!window.firebase, auth: !!window.auth, db: !!window.db });
+
+    auth.onAuthStateChanged(async (u) => {
+      who.textContent = u ? (u.email || u.uid) : 'Signed out';
+      if (!u) { editor.style.display = 'none'; return; }
+
+      try {
+        const snap = await db.collection('users').doc(u.uid).get();
+        const role = snap.exists ? snap.data().role : 'student';
+        if (role === 'teacher' || role === 'admin') {
+          editor.style.display = '';
+          document.getElementById('addStoryBtn').onclick = addStory;
+        } else {
+          editor.style.display = 'none';
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    });
+
+    // filter buttons
+    document.getElementById('applyFilter').onclick = renderStories;
+    document.getElementById('resetFilter').onclick = () => {
+      document.getElementById('gradeFilter').value = '';
+      document.getElementById('tagFilter').value = '';
+      renderStories();
+    };
+
+    // initial load
+    renderStories();
+  };
+</script>
 </body>
 </html>
