@@ -6,30 +6,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="stylesheet" href="assets/css/style.css" />
 
+  <!-- Firebase compat SDKs (deferred, order preserved) -->
   <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
   <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
   <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
   <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-storage-compat.js"></script>
+  <!-- Your init file: MUST contain your real config -->
   <script defer src="assets/js/firebase.js"></script>
   <script defer src="assets/js/main.js"></script>
-<script>
-      async function signInWithGoogle(){
-        try {
-          const provider = new firebase.auth.GoogleAuthProvider();
-          await auth.signInWithPopup(provider);
-          document.getElementById("whoami").textContent = auth.currentUser?.email || "Signed in";
-        } catch (e) {
-          console.error('Google sign-in error:', e);
-          if (e?.code === 'auth/popup-blocked' || e?.code === 'auth/cancelled-popup-request') {
-            // Fallback: use redirect flow
-            return auth.signInWithRedirect(new firebase.auth.GoogleAuthProvider());
-          }
-          alert((e.code || 'error') + ': ' + (e.message || 'Sign-in failed'));
-        }
-      }
-</script>
-
-
 </head>
 <body>
 <header class="backdrop">
@@ -58,45 +42,4 @@
           <button class="btn btn-ghost" id="googleBtn">Sign in with Google</button>
           <button class="btn btn-ghost" id="logoutBtn">Logout</button>
         </div>
-        <div class="small">User: <span id="whoami">Signed out</span></div>
-      </div>
-    </div>
-    <div class="card"><div class="badge">Privacy</div><div class="small">Admins can restrict sign-ups by domain in Firebase Auth settings.</div></div>
-  </section>
-</div>
-
-<footer class="container">
-  <div>© <span id="year"></span> Ms. Riti Learning Center</div>
-  <div class="small">K–8 teacher–student portal.</div>
-</footer>
-
-<script>
-  async function signInWithGoogle(){
-    const provider = new firebase.auth.GoogleAuthProvider();
-    await auth.signInWithPopup(provider);
-  }
-  async function emailSignup(){
-    const email = document.getElementById('email').value.trim();
-    const pass = document.getElementById('password').value.trim();
-    await auth.createUserWithEmailAndPassword(email, pass);
-  }
-  async function emailLogin(){
-    const email = document.getElementById('email').value.trim();
-    const pass = document.getElementById('password').value.trim();
-    await auth.signInWithEmailAndPassword(email, pass);
-  }
-  async function doLogout(){ await auth.signOut(); }
-
-  document.addEventListener("DOMContentLoaded", () => {
-    document.getElementById("loginBtn").onclick = emailLogin;
-    document.getElementById("signupBtn").onclick = emailSignup;
-    document.getElementById("googleBtn").onclick = signInWithGoogle;
-    document.getElementById("logoutBtn").onclick = doLogout;
-
-    auth.onAuthStateChanged(user => {
-      document.getElementById("whoami").textContent = user ? user.email : "Signed out";
-    });
-  });
-</script>
-</body>
-</html>
+        <div class="small">User: <span id="whoami">Signed out
