@@ -23,6 +23,11 @@
   --radius:        12px;
 
   --focus:         0 0 0 3px rgba(37,99,235,.25);
+
+  --logo-size-desktop: 44px;   /* was 28px */
+  --logo-size-mobile: 34px;
+  --brand-font-desktop: 1.25rem;  /* was default */
+  --brand-font-mobile: 1.05rem;
 }
 
 /* Optional dark scheme (auto) */
@@ -83,28 +88,27 @@ header.backdrop{
   align-items:center;
   justify-content:space-between;
   gap:1rem;
-  padding:.8rem 0; /* slightly taller for larger logo */
+  padding:.85rem 0; /* slightly taller for larger logo */
 }
 
 .brand{
-  display:flex;
-  align-items:center;
-  gap:.8rem;
-  font-weight:800;
-  letter-spacing:.1px;
+  gap: .8rem;                /* a bit more space between logo/text */
+  font-weight: 800;
+  font-size: var(--brand-font-desktop);
 }
 .brand span{ color:var(--brand); }
 
 /* Bigger logo (≈3× old size) */
 .brand img{
-  height:84px;      /* was 28px */
-  width:auto;
+  height: var(--logo-size-desktop);
+  width: auto;
 }
 
 /* Keep header comfy on small screens */
-@media(max-width:860px){
-  .brand img{ height:48px; }
-  .nav{ gap:.75rem; padding:.6rem 0; }
+@media (max-width: 640px){
+  .brand img{ height: var(--logo-size-mobile); }
+  .brand{ font-size: var(--brand-font-mobile); }
+  .nav{ padding: .7rem 0; }
 }
 
 .navlinks{
