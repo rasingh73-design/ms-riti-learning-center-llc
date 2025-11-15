@@ -1,0 +1,19 @@
+# Dependencies
+node_modules/
+
+# Builds
+dist/
+build/
+
+# Env / local
+.env
+.env.*
+.firebase/
+.vercel/
+.netlify/
+
+# IDE/OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
