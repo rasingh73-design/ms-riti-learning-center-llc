@@ -61,94 +61,65 @@
 </footer>
 
 <script>
-  // ---- Helpers ----
-  const $ = (id) => document.getElementById(id);
-  const showErr = (e) => {
-    console.error(e);
-    const code = e?.code || 'error';
-    const msg  = e?.message || 'Something went wrong.';
-    $('msg').textContent = `${code}: ${msg}`;
-    alert(`${code}: ${msg}`);
-  };
+  // where to go after login
+  function nextTarget() {
+    const qs = new URLSearchParams(location.search).get('next');
+    const saved = sessionStorage.getItem('next') || '';
+    return (qs || saved || '').trim();
+  }
 
-  // Optional ?next=/page.html support
-  function getParam(name){
-    const v = new URLSearchParams(location.search).get(name);
-    return v ? decodeURIComponent(v) : '';
-  }
-  const nextFromQuery   = getParam('next');
-  const nextFromSession = sessionStorage.getItem('next') || '';
-  const NEXT = nextFromQuery || nextFromSession || '';
+  async function redirectAfterLogin(user) {
+    if (!user) return;
 
-  // ---- Auth actions (compat) ----
-  async function emailLogin(){
-    const email = $('email').value.trim();
-    const pass  = $('password').value.trim();
-    await auth.signInWithEmailAndPassword(email, pass);
-  }
-  async function emailSignup(){
-    const email = $('email').value.trim();
-    const pass  = $('password').value.trim();
-    const cred = await auth.createUserWithEmailAndPassword(email, pass);
-    // Create minimal user doc if not exists
-    await db.collection('users').doc(cred.user.uid).set({
-      role: 'student',
-      name: cred.user.displayName || '',
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
-    }, { merge: true });
-  }
-  async function googleLogin(){
+    const next = nextTarget();
     try {
-      const provider = new firebase.auth.GoogleAuthProvider();
-      await auth.signInWithPopup(provider);
-    } catch (e) {
-      // Popup blocked -> fallback to redirect
-      if (e?.code === 'auth/popup-blocked' || e?.code === 'auth/cancelled-popup-request') {
-        try { await auth.signInWithRedirect(new firebase.auth.GoogleAuthProvider()); return; }
-        catch (ee) { showErr(ee); }
-      } else {
-        showErr(e);
+      const ref = db.collection('users').doc(user.uid);
+      const snap = await ref.get();
+
+      // ensure user doc exists
+      if (!snap.exists) {
+        await ref.set({
+          role: 'student',
+          name: user.displayName || '',
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        }, { merge: true });
       }
+
+      const role = (snap.exists && snap.data().role) || 'student';
+      sessionStorage.removeItem('next');
+
+      const dest = next || ((role === 'teacher' || role === 'admin') ? 'admin.html' : 'index.html');
+      location.replace(dest);
+    } catch (e) {
+      console.warn('Redirect failed, defaulting to home:', e);
+      location.replace(next || 'index.html');
     }
   }
-  function doLogout(){ return auth.signOut(); }
 
-  // ---- Wire UI AFTER all defer scripts are executed ----
-  window.onload = () => {
-    // Footer year
-    const y = $('year'); if (y) y.textContent = new Date().getFullYear();
+  window.onload = async () => {
+    // show who
+    const who = document.getElementById('whoami');
 
-    // Sanity log
-    console.log('login init:', { firebase: !!window.firebase, auth: !!window.auth, db: !!window.db });
+    // handle redirect flow (when popup was blocked)
+    try {
+      const res = await auth.getRedirectResult();
+      if (res && res.user) return redirectAfterLogin(res.user);
+    } catch (e) {
+      console.warn('getRedirectResult:', e);
+    }
 
-    $('loginBtn').onclick  = () => emailLogin().catch(showErr);
-    $('signupBtn').onclick = () => emailSignup().catch(showErr);
-    $('googleBtn').onclick = () => googleLogin().catch(showErr);
-    $('logoutBtn').onclick = () => doLogout().catch(showErr);
-
-    // Keep whoami updated & redirect after login
-    auth.onAuthStateChanged(async (user) => {
-      $('whoami').textContent = user ? (user.email || user.uid) : 'Signed out';
-      if (!user) return;
-
-      // Determine role
-      let role = 'student';
-      try {
-        const snap = await db.collection('users').doc(user.uid).get();
-        if (snap.exists && snap.data().role) role = snap.data().role;
-      } catch (e) {
-        console.warn('Unable to read role; defaulting to student', e);
-      }
-
-      // Clear saved next and redirect
-      sessionStorage.removeItem('next');
-      if (role === 'teacher' || role === 'admin') {
-        location.replace(NEXT || 'admin.html');
-      } else {
-        location.replace(NEXT || 'index.html');
-      }
+    // normal sign-in / state changes
+    auth.onAuthStateChanged(u => {
+      if (who) who.textContent = u ? (u.email || u.uid) : 'Signed out';
+      if (u) redirectAfterLogin(u);
     });
+
+    // hard fallback in case the event didn’t fire yet
+    setTimeout(() => {
+      if (auth.currentUser) redirectAfterLogin(auth.currentUser);
+    }, 1500);
   };
 </script>
+
 </body>
 </html>
