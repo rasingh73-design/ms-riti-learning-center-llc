@@ -6,13 +6,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <link rel="stylesheet" href="assets/css/style.css" />
 
-  <!-- Firebase compat SDKs (deferred, order preserved) -->
+  <!-- Firebase compat SDKs -->
   <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
   <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
   <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
   <script defer src="https://www.gstatic.com/firebasejs/10.12.5/firebase-storage-compat.js"></script>
-  <!-- Your init file: MUST contain your real config -->
+
+  <!-- Your Firebase init (must contain your real config!) -->
   <script defer src="assets/js/firebase.js"></script>
+  <!-- Auth helpers using compat -->
+  <script defer src="assets/js/auth-compat.js"></script>
   <script defer src="assets/js/main.js"></script>
 </head>
 <body>
@@ -33,6 +36,7 @@
       <div class="kicker">Account</div>
       <h1>Login / Sign up</h1>
       <p class="lead">Use school email or Google. After logging in you can submit homework and see results.</p>
+
       <div class="mt-2" style="display:grid;gap:.6rem;max-width:420px">
         <input id="email" type="email" placeholder="Email"/>
         <input id="password" type="password" placeholder="Password"/>
@@ -42,4 +46,60 @@
           <button class="btn btn-ghost" id="googleBtn">Sign in with Google</button>
           <button class="btn btn-ghost" id="logoutBtn">Logout</button>
         </div>
-        <div class="small">User: <span id="whoami">Signed out
+        <div class="small">User: <span id="whoami">Signed out</span></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="badge">Privacy</div>
+      <div class="small">Admins can restrict sign-ups by domain in Firebase Auth settings.</div>
+    </div>
+  </section>
+</div>
+
+<footer class="container">
+  <div>© <span id="year"></span> Ms. Riti Learning Center</div>
+  <div class="small">K–8 teacher–student portal.</div>
+</footer>
+
+<!-- Page wiring (after DOM + scripts loaded) -->
+<script>
+  document.addEventListener("DOMContentLoaded", () => {
+    const emailEl = document.getElementById("email");
+    const passEl  = document.getElementById("password");
+    const whoEl   = document.getElementById("whoami");
+
+    const showErr = (e) => {
+      console.error(e);
+      alert((e.code || 'error') + ': ' + (e.message || 'Failed'));
+    };
+
+    document.getElementById("loginBtn").onclick = async () => {
+      try { await AUTH.emailLogin(emailEl.value.trim(), passEl.value.trim()); }
+      catch (e) { showErr(e); }
+    };
+
+    document.getElementById("signupBtn").onclick = async () => {
+      try { await AUTH.emailSignup(emailEl.value.trim(), passEl.value.trim(), { name: "" }); }
+      catch (e) { showErr(e); }
+    };
+
+    document.getElementById("googleBtn").onclick = async () => {
+      try { await AUTH.googleLogin(); }
+      catch (e) {
+        if (e?.code === 'auth/popup-blocked' || e?.code === 'auth/cancelled-popup-request') {
+          try { await auth.signInWithRedirect(new firebase.auth.GoogleAuthProvider()); }
+          catch (ee) { showErr(ee); }
+          return;
+        }
+        showErr(e);
+      }
+    };
+
+    document.getElementById("logoutBtn").onclick = () => AUTH.logout().catch(showErr);
+
+    AUTH.onUserChanged(u => { whoEl.textContent = u ? u.email : "Signed out"; });
+  });
+</script>
+</body>
+</html>
