@@ -1,5 +1,6 @@
 // assets/js/auth-compat.js
 console.log('auth-compat.js loaded');
+
 window.AUTH = {
   async emailSignup(email, password, extra = {}) {
     const cred = await auth.createUserWithEmailAndPassword(email, password);
@@ -11,14 +12,18 @@ window.AUTH = {
     }, { merge: true });
     return cred.user;
   },
+
   async emailLogin(email, password) {
     const cred = await auth.signInWithEmailAndPassword(email, password);
     return cred.user;
   },
+
   async googleLogin() {
     const provider = new firebase.auth.GoogleAuthProvider();
     return auth.signInWithPopup(provider);
   },
+
   logout() { return auth.signOut(); },
+
   onUserChanged(cb) { return auth.onAuthStateChanged(cb); }
 };
