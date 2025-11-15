@@ -83,33 +83,38 @@ header.backdrop{
   header.backdrop{ background:rgba(15,23,42,.7); }
 }
 
-.nav{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:1rem;
-  padding:.85rem 0; /* slightly taller for larger logo */
-}
-
+/* Keep logo + name on one line and vertically centered */
 .brand{
-  gap: .8rem;                /* a bit more space between logo/text */
+  display: flex;           /* <— missing */
+  align-items: center;     /* vertical align */
+  gap: .8rem;
   font-weight: 800;
   font-size: var(--brand-font-desktop);
+  white-space: nowrap;     /* prevent wrap under the logo */
 }
-.brand span{ color:var(--brand); }
 
-/* Bigger logo (≈3× old size) */
+/* Logo size */
 .brand img{
-  height: var(--logo-size-desktop);
+  height: var(--logo-size-desktop); /* 44px now */
   width: auto;
 }
 
-/* Keep header comfy on small screens */
-@media (max-width: 640px){
-  .brand img{ height: var(--logo-size-mobile); }
-  .brand{ font-size: var(--brand-font-mobile); }
-  .nav{ padding: .7rem 0; }
+/* Navbar alignment stays centered */
+.nav{
+  display: flex;
+  align-items: center;     /* already there, good to keep */
+  justify-content: space-between;
+  gap: 1rem;
+  padding: .85rem 0;
 }
+
+/* Mobile tweaks */
+@media (max-width: 640px){
+  .brand{ font-size: var(--brand-font-mobile); }
+  .brand img{ height: var(--logo-size-mobile); }
+}
+
+
 
 .navlinks{
   display:flex;
